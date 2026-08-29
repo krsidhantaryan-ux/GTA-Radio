@@ -1,6 +1,14 @@
 import type { LocalTrack } from '../types';
 
-/** Two-channel Web Audio player. Alternating channels allows gapless-feeling fades. */
+/**
+ * Two-channel Web Audio player. Alternating channels allows gapless-feeling
+ * fades between tracks. The other channels are kept in sync so a queued
+ * crossfade never causes a silent gap.
+ *
+ * The public surface deliberately exposes low-level timeline + gain controls so
+ * the broadcast scheduler (see `src/radio/scheduler.ts`) can pause the station,
+ * fade it, and pop an advertisement in without changing the engine's clock.
+ */
 export class RadioEngine {
   private context?: AudioContext;
   private channels: HTMLAudioElement[] = [new Audio(), new Audio()];
@@ -72,5 +80,84 @@ export class RadioEngine {
     this.objectUrls.forEach(URL.revokeObjectURL);
     this.objectUrls.clear();
     void this.context?.close();
+  }
+
+  // --------------------------------------------------------------------------
+  // Broadcast-scheduler control surface
+  // --------------------------------------------------------------------------
+
+  /** Underlying Web Audio context (needed to wire an extra ad channel). */
+  getContext(): AudioContext | null {
+    return this.context ?? null;
+  }
+
+  /** The audio element currently carrying the station's timeline. */
+  getActiveChannel(): HTMLAudioElement {
+    return this.channels[this.active];
+  }
+
+  /** The gain node feeding the active channel, used for fades. */
+  getActiveGain(): GainNode | null {
+    return this.gains[this.active] ?? null;
+  }
+
+  /** Current playback position in the station file, seconds. */
+  getPosition(): number {
+    return this.channels[this.active].currentTime;
+  }
+
+  /** Duration of the current station file, seconds (0 before metadata loads). */
+  getDuration(): number {
+    return this.channels[this.active].duration;
+  }
+
+  isActivePlaying(): boolean {
+    const channel = this.channels[this.active];
+    return !channel.paused && !channel.ended;
+  }
+
+  pauseActive(): void {
+    this.channels[this.active].pause();
+  }
+
+  playActive(): void {
+    void this.channels[this.active].play();
+  }
+
+  /**
+   * Jump the active channel to an absolute position. Positive values wrap into
+   * the file duration (so a long broadcast stays seamless, like `liveOffset`).
+   */
+  seekActive(offset: number): void {
+    const channel = this.channels[this.active];
+    const duration = channel.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    channel.currentTime = ((offset % duration) + duration) % duration;
+  }
+
+  /**
+   * Smoothly ramp the active channel's gain to `target` over `seconds`.
+   * Safe to call repeatedly (each call cancels prior scheduled values).
+   */
+  fadeMusic(target: number, seconds: number): void {
+    const gain = this.getActiveGain();
+    if (!gain || !this.context) return;
+    const now = this.context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(0, gain.gain.value), now);
+    gain.gain.linearRampToValueAtTime(Math.max(0, Math.min(1, target)), now + seconds);
+  }
+
+  /** Hard-set the active gain without ramping (used to avoid a fade on reset). */
+  setMusicGain(value: number): void {
+    const gain = this.getActiveGain();
+    if (!gain || !this.context) return;
+    gain.gain.cancelScheduledValues(this.context.currentTime);
+    gain.gain.setValueAtTime(Math.max(0, Math.min(1, value)), this.context.currentTime);
+  }
+
+  /** True when the context exists and the active channel has real media. */
+  isReady(): boolean {
+    return this.context !== null && Number.isFinite(this.channels[this.active].duration) && this.channels[this.active].duration > 0;
   }
 }
