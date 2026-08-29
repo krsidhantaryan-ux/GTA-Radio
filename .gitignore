@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.DS_Store
+
+# Local user-supplied audio and artwork. Never commit these files.
+public/local-radio/
+public/local-assets/
+radio-source/
+*.awc
+*.wem
