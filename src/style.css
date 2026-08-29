@@ -10,7 +10,7 @@ button { font: inherit; }
   position: relative; width: 100vw; height: 100dvh; overflow: hidden;
   background:
     linear-gradient(to bottom, rgba(7,8,15,.28) 0 38%, rgba(6,9,15,.52) 56%, rgba(2,4,8,.82) 100%),
-    url('./assets/background.png') center / cover no-repeat,
+    url('../background.jpg') center / cover no-repeat,
     linear-gradient(165deg, #3f3156 3%, #ad4d66 36%, #df755f 53%, #263446 54%, #0b111c 100%);
 }
 .radio-app::before {
