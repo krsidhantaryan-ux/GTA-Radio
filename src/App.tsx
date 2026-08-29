@@ -28,6 +28,8 @@ export function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const engine = useMemo(() => new RadioEngine(), []);
   const station = stations[selected];
+  const leftStation = stations[(selected - 1 + stations.length) % stations.length];
+  const rightStation = stations[(selected + 1) % stations.length];
   const rotation = -(360 / stations.length) * selected;
 
   const notify = useCallback((message: string) => {
@@ -103,7 +105,9 @@ export function App() {
             style={{ '--angle': `${angle}deg`, '--station-color': item.color } as React.CSSProperties}
             onClick={() => { changeStation(index); window.setTimeout(() => void activate(), 0); }}>
             <motion.span className="station-inner" animate={{ rotate: -rotation }} transition={{ type: 'spring', stiffness: 170, damping: 24 }}>
-              <span className="station-mark">{item.mark}</span>
+              {item.logo
+                ? <img className="station-logo" src={item.logo} alt="" draggable={false} />
+                : <span className="station-mark">{item.mark}</span>}
             </motion.span>
           </button>;
         })}
@@ -112,7 +116,10 @@ export function App() {
         <h1>{station.name}</h1>
         <p className="track">{station.id === 'off' ? 'Radio Off' : tracks.get(station.id)?.length ? trackName : 'No local audio found'}</p>
         <p className="artist">{station.genre}</p>
-        <p className="hint"><span className="key">A</span>{station.id === 'off' ? 'turn radio off' : 'select radio'}</p>
+        <p className="hint direction-hint">
+          <span className="direction"><span className="key">A</span>{leftStation.short}</span>
+          <span className="direction"><span className="key">D</span>{rightStation.short}</span>
+        </p>
       </div>
     </section>
     <div className={`status ${tracks.size ? 'ready' : ''}`}>{status}</div>
