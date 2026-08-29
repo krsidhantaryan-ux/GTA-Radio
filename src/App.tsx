@@ -101,7 +101,7 @@ export function App() {
         {stations.map((item, index) => {
           const angle = (360 / stations.length) * index;
           return <button key={item.id} aria-label={item.name}
-            className={`station ${item.id === 'off' ? 'off' : ''} ${index === selected ? 'selected' : ''}`}
+            className={`station ${item.logo ? 'has-logo' : 'text-logo'} ${item.id === 'off' ? 'off' : ''} ${index === selected ? 'selected' : ''}`}
             style={{ '--angle': `${angle}deg`, '--station-color': item.color } as React.CSSProperties}
             onClick={() => { changeStation(index); window.setTimeout(() => void activate(), 0); }}>
             <motion.span className="station-inner" animate={{ rotate: -rotation }} transition={{ type: 'spring', stiffness: 170, damping: 24 }}>
